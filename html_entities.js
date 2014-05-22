@@ -271,7 +271,7 @@ if (typeof htmlEntities === 'undefined') {
 			},
 
 			decode: function(text) {
-				return text.replace(/\&([\w]+);|#([\d]+);/g, function(str, entity, code) {
+				return text.replace(/\&([\w]+);|\&#([\d]+);/g, function(str, entity, code) {
 					return symbolTable[entity] || String.fromCharCode(code);
 				});
 			}
