@@ -1,0 +1,178 @@
+Application.AddScriptInfo("54BBD2E8-4D55-4244-AD9E-74CF9374AC66", "Formatting Tools", "1.2", "Formatting Tools for HippoEDIT", "HippoEDIT.com", "supportbox@hippoedit.com", "http://wiki.hippoedit.com/plugins/formatting");
+
+function processLine(sel, doc, regexp, actionName) {
+	doc.BeginUndoGroup(false, AddUndoActionType(actionName));
+	for (var i = sel.Top; i <= sel.Bottom; i++)
+		doc.ReplaceText(new Range(i, 0, i, doc.GetLineLength(i)), doc.GetLine(i).replace(regexp, ''));
+	doc.FlushUndoGroup();
+}
+
+function getRange(doc){
+	var view = doc.ActiveView;
+	var oSel = view.Selection;
+	if (oSel.IsEmpty) oSel = new Range(view.Position.Line, 0, view.Position.Line, doc.GetLineLength(view.Position.Line));
+	return oSel;
+}
+
+function mul(str, num) {
+	return num ? Array(num + 1).join(str) : "";
+}
+
+function processLineEx(doc, regexp, actionName) {
+	processLine(getRange(doc), doc, regexp, actionName);
+}
+
+function isEditable() {
+	return ActiveDocument !== null && ActiveDocument.ReadOnly !== true;
+}
+
+var vTrimLeading = new Command("FormattingTools.TrimLeadingSpaces", "Trim Leading Spaces", "Trim lines leading white space for selection or current line", - 1);
+vTrimLeading.onEnabled = isEditable;
+vTrimLeading.onExecute = function() {
+	processLineEx(ActiveDocument, /^\s+/g, this.Title);
+};
+
+var vTrimTrailing = new Command("FormattingTools.TrimTrailingSpaces", "Trim Trailing Spaces", "Trim lines trailing white space for selection or current line", - 1);
+vTrimTrailing.onEnabled = isEditable;
+vTrimTrailing.onExecute = function() {
+	processLineEx(ActiveDocument, /\s+$/g, this.Title);
+};
+
+var vTrimAll = new Command("FormattingTools.TrimSpaces", "Trim Spaces", "Trim lines white space for selection or current line", - 1);
+vTrimAll.onEnabled = isEditable;
+vTrimAll.onExecute = function() {
+	processLineEx(ActiveDocument, /^\s+|\s+$/g, this.Title);
+};
+
+var vLeadingSpacesToTabs = new Command("FormattingTools.LeadingSpacesToTabs", "Leading Spaces To Tabs", "Convert leading spaces to tabs for selection or current line", - 1);
+vLeadingSpacesToTabs.onEnabled = isEditable;
+vLeadingSpacesToTabs.onExecute = function() {
+	var doc = ActiveDocument;
+	var sel = getRange(doc);
+	doc.BeginUndoGroup(false, AddUndoActionType(this.Title));
+	for (var i = sel.Top; i <= sel.Bottom; i++){
+		var line = doc.GetLine(i);
+		if ( line.search(/^\s+/g) == 0 && RegExp.lastMatch.length >= doc.TabSize)
+		{
+			var nOffset = doc.TextToOffset(new Position(i, RegExp.lastMatch.length));
+			doc.ReplaceText(new Range(i, 0, i, RegExp.lastMatch.length), mul("\t", ~~(nOffset/doc.TabSize)) + mul(" ", nOffset%doc.TabSize));
+		}
+	}
+	doc.FlushUndoGroup();
+};
+
+var vLeadingTabsToSpaces = new Command("FormattingTools.LeadingTabsToSpaces", "Leading Tabs To Spaces", "Convert leading tabs to spaces for selection or current line", - 1);
+vLeadingTabsToSpaces.onEnabled = isEditable;
+vLeadingTabsToSpaces.onExecute = function() {
+	var doc = ActiveDocument;
+	var sel = getRange(doc);
+	doc.BeginUndoGroup(false, AddUndoActionType(this.Title));
+	for (var i = sel.Top; i <= sel.Bottom; i++){
+		var line = doc.GetLine(i);
+		if ( line.search(/^\s+/g) == 0)
+		{
+			var nOffset = doc.TextToOffset(new Position(i, RegExp.lastMatch.length));
+			doc.ReplaceText(new Range(i, 0, i, RegExp.lastMatch.length), mul(" ", nOffset));
+		}
+	}
+	doc.FlushUndoGroup();
+};
+
+var vSpacesToTabs = new Command("FormattingTools.SpacesToTabs", "Spaces To Tabs", "Convert spaces to tabs for selection or current line", - 1);
+vSpacesToTabs.onEnabled = isEditable;
+vSpacesToTabs.onExecute = function() {
+	var doc = ActiveDocument;
+	var sel = getRange(doc);
+	doc.BeginUndoGroup(false, AddUndoActionType(this.Title));
+	for (var i = sel.Top; i <= sel.Bottom; i++){
+		var re = /\s+/g, line = doc.GetLine(i);
+		var a = [];
+		// collect text to replace
+		while ((match = re.exec(line)) != null) {
+			var nStartOffset = doc.TextToOffset(new Position(i, match.index));
+			var nEndOffset = doc.TextToOffset(new Position(i, re.lastIndex));
+			var nOffset = nEndOffset - nStartOffset - ((nStartOffset%doc.TabSize)?(doc.TabSize - nStartOffset%doc.TabSize):0);
+			if ( (nEndOffset - nStartOffset) >= doc.TabSize )
+				a.push({ start : match.index, end : re.lastIndex,
+					str : mul("\t", ~~(nOffset/doc.TabSize) + ((nStartOffset%doc.TabSize)?1:0)) + mul(" ", nOffset%doc.TabSize) });
+		}
+		// do reverse replacement
+		for (var n = a.length - 1; n >= 0 ; --n)
+			doc.ReplaceText(new Range(i, a[n].start, i, a[n].end), a[n].str);
+	}
+	doc.FlushUndoGroup();
+};
+
+var vTabsToSpaces = new Command("FormattingTools.TabsToSpaces", "Tabs To Spaces", "Convert tabs to spaces for selection or current line", - 1);
+vTabsToSpaces.onEnabled = isEditable;
+vTabsToSpaces.onExecute = function() {
+	var doc = ActiveDocument;
+	var sel = getRange(doc);
+	doc.BeginUndoGroup(false, AddUndoActionType(this.Title));
+	for (var i = sel.Top; i <= sel.Bottom; i++){
+		var line = doc.GetLine(i);
+		for (var nPos = line.lastIndexOf("\t"); nPos != -1; nPos = nPos?line.lastIndexOf("\t", nPos - 1):-1)
+		{
+			var nOffset = doc.TextToOffset(new Position(i, nPos));
+			doc.ReplaceText(new Range(i, nPos, i, nPos + 1), mul(" ", doc.TabSize - nOffset%doc.TabSize));
+		}
+	}
+	doc.FlushUndoGroup();
+};
+
+var vStripHTMLTags = new Command("FormattingTools.StripHTMLTags", "Strip HTML Tags", "Strip HTML tags from selected text or current line", - 1);
+vStripHTMLTags.onEnabled = isEditable;
+vStripHTMLTags.onExecute = function() {
+	var doc = ActiveDocument;
+	var sel = getRange(doc);
+	var text = doc.GetText(sel).replace(/(<([^>]+)>)/ig,"").replace(/(\r\n)+/g,"\r\n").replace(/\n+/g,"\n");
+	doc.ReplaceText(sel, text, AddUndoActionType(this.Title));
+};
+
+var vEncodeHTMLEntities = new Command("FormattingTools.EncodeHTMLEntities", "Encode HTML Entities", "Convert all Unicode characters in selected text into HTML Entities", - 1);
+vEncodeHTMLEntities.onEnabled = isEditable;
+vEncodeHTMLEntities.onExecute = function() {
+	if ( __include("html_entities.js") ) {
+		var doc = ActiveDocument;
+		var sel = getRange(doc);
+		var text = htmlEntities.encode(doc.GetText(sel));
+		doc.ReplaceText(sel, text, AddUndoActionType(this.Title));	
+	}
+};
+
+var vDecodeHTMLEntities = new Command("FormattingTools.DecodeHTMLEntities", "Decode HTML Entities", "Convert all HTML Entities in selected text into Unicode characters", - 1);
+vDecodeHTMLEntities.onEnabled = isEditable;
+vDecodeHTMLEntities.onExecute = function() {
+	if ( __include("html_entities.js") ) {
+		var doc = ActiveDocument;
+		var sel = getRange(doc);
+		var text = htmlEntities.decode(doc.GetText(sel));
+		doc.ReplaceText(sel, text, AddUndoActionType(this.Title));	
+	}
+};
+
+////////////////////////////////////////////////////////////////////////
+// Update main menu with our items
+Application.onInitMainMenu = function(bUpdate) {
+	if (bUpdate === false) {
+		var menu_location = this.GetMenuItemPos("Edit.DeleteDuplicates");
+		if (menu_location.Menu !== null && menu_location.Position != -1) {
+			var oWhiteSpace = menu_location.Menu.InsertSubMenu(menu_location.Position + 1, "White Space");
+			oWhiteSpace.AddItem("", vTrimLeading);
+			oWhiteSpace.AddItem("", vTrimTrailing);
+			oWhiteSpace.AddItem("", vTrimAll);
+			oWhiteSpace.AddItem("");
+			oWhiteSpace.AddItem("", vLeadingSpacesToTabs);
+			oWhiteSpace.AddItem("", vLeadingTabsToSpaces);
+			oWhiteSpace.AddItem("");
+			oWhiteSpace.AddItem("", vSpacesToTabs);
+			oWhiteSpace.AddItem("", vTabsToSpaces);
+
+			menu_location.Menu.InsertItem(menu_location.Position + 1, "", vStripHTMLTags);
+			menu_location.Menu.InsertItem(menu_location.Position + 1, "");
+			menu_location.Menu.InsertItem(menu_location.Position + 1, "", vEncodeHTMLEntities);
+			menu_location.Menu.InsertItem(menu_location.Position + 1, "", vDecodeHTMLEntities);
+			menu_location.Menu.InsertItem(menu_location.Position + 1, "");
+		}
+	}
+};

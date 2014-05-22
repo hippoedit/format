@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<!DOCTYPE package-info SYSTEM "http://www.hippoedit.com/xml/package-info">
+<package-info xmlns="http://www.hippoedit.com/xml/package-info" xmlns:smf="http://www.hippoedit.com/">
+	<id>54BBD2E8-4D55-4244-AD9E-74CF9374AC66</id>
+	<name>Formatting Tools</name>
+	<version>1.2</version>
+	<description>Formatting Tools for HippoEDIT</description>
+	<author>HippoEDIT.com</author>
+	<email>supportbox@hippoedit.com</email>
+	<homepage>http://wiki.hippoedit.com/plugins/formatting</homepage>
+	<memo></memo>
+	<install>
+		<readme type="inline">This will install Formatting Tools plugin for HippoEDIT.</readme>
+		<require-file name="main.hejs" destination="%{plugins}%/format/main.hejs" />
+		<require-file name="html_entities.js" destination="%{plugins}%/format/html_entities.js" />
+		<install-plugin path="%{plugins}%/format/main.hejs"/>
+	</install>
+	<uninstall>
+		<readme type="inline">This will uninstall Formatting Tools plugin for HippoEDIT.</readme>
+		<uninstall-plugin id="54BBD2E8-4D55-4244-AD9E-74CF9374AC66"/>
+		<remove-file name="%{plugins}%/format/main.hejs" />
+		<remove-file name="%{plugins}%/format/html_entities.js" />
+		<remove-dir name="%{plugins}%/format" />
+	</uninstall>
+</package-info>
