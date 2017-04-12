@@ -1,4 +1,4 @@
-Application.AddScriptInfo("54BBD2E8-4D55-4244-AD9E-74CF9374AC66", "Formatting Tools", "1.2", "Formatting Tools for HippoEDIT", "HippoEDIT.com", "supportbox@hippoedit.com", "http://wiki.hippoedit.com/plugins/formatting");
+Application.AddScriptInfo("54BBD2E8-4D55-4244-AD9E-74CF9374AC66", "Formatting Tools", "1.4", "Formatting Tools for HippoEDIT", "HippoEDIT.com", "supportbox@hippoedit.com", "http://wiki.hippoedit.com/plugins/formatting");
 
 function processLine(sel, doc, regexp, actionName) {
 	doc.BeginUndoGroup(false, AddUndoActionType(actionName));
@@ -11,6 +11,13 @@ function getRange(doc){
 	var view = doc.ActiveView;
 	var oSel = view.Selection;
 	if (oSel.IsEmpty) oSel = new Range(view.Position.Line, 0, view.Position.Line, doc.GetLineLength(view.Position.Line));
+	return oSel;
+}
+
+function getRangeEx(doc){
+	var view = doc.ActiveView;
+	var oSel = view.Selection;
+	if (oSel.IsEmpty) oSel = new Range(0, 0, doc.LineCount - 1, doc.GetLineLength(doc.LineCount - 1));
 	return oSel;
 }
 
@@ -120,12 +127,15 @@ vTabsToSpaces.onExecute = function() {
 	doc.FlushUndoGroup();
 };
 
-var vStripHTMLTags = new Command("FormattingTools.StripHTMLTags", "Strip HTML Tags", "Strip HTML tags from selected text or current line", - 1);
+var vStripHTMLTags = new Command("FormattingTools.StripHTMLTags", "Strip HTML Tags", "Strip HTML tags from selected text or whole document", - 1);
 vStripHTMLTags.onEnabled = isEditable;
 vStripHTMLTags.onExecute = function() {
 	var doc = ActiveDocument;
-	var sel = getRange(doc);
-	var text = doc.GetText(sel).replace(/(<([^>]+)>)/ig,"").replace(/(\r\n)+/g,"\r\n").replace(/\n+/g,"\n");
+	var sel = getRangeEx(doc);
+	var text = doc.GetText(sel).replace(/(<([^>]+)>)/ig,"").replace(/\r\n\s*\r\n/gm,"\r\n").replace(/\n\s*\n/gm,"\n");
+	if ( __include("html_entities.js") ) {
+		text = htmlEntities.decode(text);
+	}
 	doc.ReplaceText(sel, text, AddUndoActionType(this.Title));
 };
 
@@ -134,7 +144,7 @@ vEncodeHTMLEntities.onEnabled = isEditable;
 vEncodeHTMLEntities.onExecute = function() {
 	if ( __include("html_entities.js") ) {
 		var doc = ActiveDocument;
-		var sel = getRange(doc);
+		var sel = getRangeEx(doc);
 		var text = htmlEntities.encode(doc.GetText(sel));
 		doc.ReplaceText(sel, text, AddUndoActionType(this.Title));	
 	}
@@ -145,7 +155,7 @@ vDecodeHTMLEntities.onEnabled = isEditable;
 vDecodeHTMLEntities.onExecute = function() {
 	if ( __include("html_entities.js") ) {
 		var doc = ActiveDocument;
-		var sel = getRange(doc);
+		var sel = getRangeEx(doc);
 		var text = htmlEntities.decode(doc.GetText(sel));
 		doc.ReplaceText(sel, text, AddUndoActionType(this.Title));	
 	}
